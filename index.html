@@ -1,0 +1,848 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Celebrity Edge Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+    /* ═══════════════════════════════════════════════════════════════════
+       CELEBRITY EDGE TRACKER — New Zealand voyage, 19 Nov – 1 Dec 2026
+       Made for grandkids following the cruise from home.
+
+       DESIGN PLAN  (neobrutalism)
+       Layout : one stacked column — header, "Today" banner, ship-tracker
+                buttons, weather + fun facts side by side (stacked on
+                phones), then a scrolling day-by-day timeline.
+       Look   : thick black outlines, hard offset shadows (no blur), flat
+                bright colours, square-ish corners, chunky headings.
+                Buttons "press down" when tapped.
+       Colour : sky-blue page, white cards, and four sticker colours
+                (sun yellow, coral, lime, lilac) used for meaning:
+                yellow = today / highlight, lime = good, lilac = day number.
+       Type   : Lilita One (chunky headings) + Nunito (easy body text).
+       ═══════════════════════════════════════════════════════════════════ */
+
+    :root {
+        /* Colour tokens (every colour in the page comes from here) */
+        --ink:     #14110f;   /* outlines, shadows and all text on light colours */
+        --ink-2:   #4a433c;   /* softer text, still strong contrast on white */
+        --paper:   #fffdf7;   /* card background */
+        --sky:     #8fd8f6;   /* page background */
+        --sky-lt:  #dff4fd;   /* pale blue tiles and past days */
+        --sun:     #ffd23f;   /* today / highlights */
+        --coral:   #ff6f61;   /* tags and the selected day */
+        --lime:    #b6f26b;   /* live / sleeps */
+        --lilac:   #c9b8ff;   /* day number */
+
+        /* The signature neobrutalist pieces */
+        --bw: 3px;                              /* border width */
+        --shadow:    5px 5px 0 var(--ink);      /* hard shadow, no blur */
+        --shadow-lg: 8px 8px 0 var(--ink);
+        --shadow-sm: 3px 3px 0 var(--ink);
+
+        /* Type tokens */
+        --display: 'Lilita One', 'Arial Black', 'Segoe UI', system-ui, sans-serif;
+        --font:    'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+        color-scheme: light;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: var(--font);
+        font-size: 16px;
+        line-height: 1.45;
+        color: var(--ink);
+        background-color: var(--sky);   /* explicit background (never transparent) */
+        /* Dot grid, like graph paper */
+        background-image: radial-gradient(rgba(20,17,15,0.2) 1.5px, transparent 1.5px);
+        background-size: 22px 22px;
+        background-attachment: fixed;
+        min-height: 100vh;
+        /* Side gutter: at least 16px, and clear of any phone system bar */
+        padding-left:  max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+
+    /* Paints the strip behind the phone's status bar so content scrolling
+       under the sticky header never shows through above it. */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0 0 auto;
+        height: env(safe-area-inset-top, 0px);
+        background: var(--sun);
+        z-index: 200;
+    }
+
+    /* ─── HEADER ─────────────────────────────────────────────────────── */
+    header {
+        /* Pull the header out to the page edges so its background is full width */
+        margin-left:  calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+        margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+        padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px));
+        background: var(--sun);
+        border-bottom: 4px solid var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        position: sticky;
+        top: env(safe-area-inset-top, 0px);   /* sits below the status bar */
+        z-index: 100;
+    }
+    .header-left { min-width: 0; }
+    .header-left h1 {
+        font-family: var(--display);
+        font-weight: 400;              /* Lilita One is already heavy */
+        font-size: 1.6rem;
+        line-height: 1.25;
+        color: var(--ink);
+        text-wrap: balance;
+    }
+    /* Ship name sits on a tilted white sticker */
+    .header-left h1 .ship-name {
+        display: inline-block;
+        background: var(--paper);
+        border: var(--bw) solid var(--ink);
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        padding: 0 10px;
+        transform: rotate(-1.5deg);
+    }
+    .header-left .subtitle { color: var(--ink); font-size: 0.85rem; font-weight: 700; margin-top: 8px; }
+    .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .live-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--lime);
+        border: var(--bw) solid var(--ink);
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        padding: 3px 12px;
+        font-size: 0.78rem; font-weight: 800; letter-spacing: 0.5px;
+        color: var(--ink);
+    }
+    .live-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--coral);
+        border: 2px solid var(--ink);
+        animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .header-date { color: var(--ink); font-size: 0.85rem; font-weight: 800; }
+
+    /* ─── LAYOUT ─────────────────────────────────────────────────────── */
+    .container { max-width: 1180px; margin: 0 auto; padding-block: 24px 20px; }
+
+    /* ─── TODAY BANNER ───────────────────────────────────────────────── */
+    .today-banner {
+        background: var(--paper);
+        border: 4px solid var(--ink);
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        padding: 18px 20px;
+        margin-bottom: 24px;
+        display: flex; align-items: center; gap: 14px 18px; flex-wrap: wrap;
+    }
+    .today-emoji {
+        width: 76px; height: 76px; flex: 0 0 76px;
+        display: grid; place-items: center;
+        font-size: 2.6rem; line-height: 1;
+        background: var(--sun);
+        border: var(--bw) solid var(--ink);
+        border-radius: 50%;
+        box-shadow: var(--shadow-sm);
+    }
+    .today-info { flex: 1; min-width: 200px; }
+    .today-info h2 {
+        font-family: var(--display); font-weight: 400;
+        font-size: 1.7rem; line-height: 1.2;
+        color: var(--ink);
+    }
+    /* Place name gets a yellow highlighter stripe */
+    .today-info h2 .loc { background: linear-gradient(transparent 55%, var(--sun) 55%); padding: 0 2px; }
+    .today-info p { color: var(--ink-2); font-size: 1rem; font-weight: 700; margin-top: 4px; }
+
+    .badge {
+        border: var(--bw) solid var(--ink);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 8px 14px;
+        text-align: center;
+        min-width: 100px;
+        color: var(--ink);
+    }
+    .badge .b-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; }
+    .badge .b-value { font-family: var(--display); line-height: 1.15; }
+    .badge .b-sub   { font-size: 0.76rem; font-weight: 700; margin-top: 2px; }
+    .badge-day    { background: var(--lilac); }
+    .badge-day .b-value    { font-size: 1.9rem; }
+    .badge-sleeps { background: var(--lime); }
+    .badge-sleeps .b-value { font-size: 1.9rem; }
+    .badge-time   { background: var(--sun); }
+    .badge-time .b-value   { font-size: 1.1rem; }
+
+    /* ─── CARDS ──────────────────────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+    .grid-2 > * { min-width: 0; }   /* lets long text wrap instead of widening the page */
+
+    .card {
+        background: var(--paper);
+        border: 4px solid var(--ink);
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        padding: 20px 20px 18px;
+    }
+    /* Card titles are black stickers stuck on the card */
+    .card-title {
+        display: inline-block;
+        font-family: var(--display); font-weight: 400;
+        font-size: 1rem; letter-spacing: 0.4px;
+        background: var(--ink);
+        color: var(--paper);
+        border-radius: 8px;
+        padding: 4px 12px;
+        margin-bottom: 16px;
+        transform: rotate(-1deg);
+    }
+    .card-title .accent { color: var(--sun); }
+
+    /* ─── SHIP TRACKER BUTTONS ───────────────────────────────────────── */
+    .tracker-intro { color: var(--ink-2); font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+    .tracker-links { display: flex; gap: 14px; flex-wrap: wrap; }
+    .tracker-link {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: var(--bw) solid var(--ink);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 11px 18px;           /* big enough to tap with a thumb */
+        font-size: 1rem; font-weight: 800;
+        color: var(--ink);
+        text-decoration: none;
+        transition: transform 0.08s, box-shadow 0.08s;
+    }
+    .tracker-link:nth-child(1) { background: var(--sun); }
+    .tracker-link:nth-child(2) { background: var(--coral); }
+    .tracker-link:nth-child(3) { background: var(--lime); }
+    .tracker-link:nth-child(4) { background: var(--lilac); }
+    /* Lift on hover, press flat on tap */
+    .tracker-link:hover  { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+    .tracker-link:active { transform: translate(5px, 5px);   box-shadow: 0 0 0 var(--ink); }
+    .tracker-link:focus-visible,
+    .itin-stop:focus-visible,
+    .w-link:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+    .tracker-note { color: var(--ink-2); font-size: 0.8rem; font-weight: 700; margin-top: 16px; }
+
+    /* ─── WEATHER ────────────────────────────────────────────────────── */
+    .weather-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .weather-icon-big { font-size: 3.2rem; line-height: 1; }
+    .weather-temp-big { font-family: var(--display); font-size: 3rem; color: var(--ink); line-height: 1; }
+    .weather-temp-big sup { font-size: 1.1rem; vertical-align: top; margin-top: 6px; display: inline-block; }
+    .weather-cond { color: var(--ink-2); font-size: 1rem; font-weight: 700; margin-top: 4px; }
+    .weather-kid {
+        display: inline-block;
+        background: var(--sun);
+        border: var(--bw) solid var(--ink);
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        padding: 4px 12px;
+        margin-bottom: 16px;
+        font-weight: 800; font-size: 1rem;
+    }
+    .weather-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .w-stat {
+        background: var(--sky-lt);
+        border: var(--bw) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: var(--shadow-sm);
+        padding: 8px 12px;
+    }
+    .w-stat .wl { font-size: 0.7rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+    .w-stat .wv { font-family: var(--display); font-size: 1.15rem; margin-top: 2px; }
+    .w-loading { color: var(--ink-2); font-size: 1rem; font-weight: 700; }
+    .w-note { font-size: 0.95rem; font-weight: 700; color: var(--ink-2); margin-top: 12px; }
+    .w-link { color: var(--ink); font-weight: 800; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+    .w-link:hover { background: var(--sun); }
+
+    /* ─── FUN FACTS ──────────────────────────────────────────────────── */
+    .fact-item {
+        border: var(--bw) solid var(--ink);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        padding: 12px 14px;
+        margin-bottom: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.5;
+        color: var(--ink);
+    }
+    .fact-item:nth-child(odd)  { background: #e4fbbf; }   /* pale lime */
+    .fact-item:nth-child(even) { background: #ffe1dc; }   /* pale coral */
+    .lookout {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--sun);
+        border: var(--bw) solid var(--ink);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        padding: 8px 12px;
+        margin-top: 2px;
+        font-size: 1rem; font-weight: 800;
+        color: var(--ink);
+    }
+
+    /* ─── ITINERARY TIMELINE ─────────────────────────────────────────── */
+    .itin-hint { color: var(--ink-2); font-size: 0.85rem; font-weight: 700; margin: 0 0 14px; }
+    .itin-scroll {
+        display: flex; gap: 16px;
+        overflow-x: auto;
+        padding: 6px 8px 16px 4px;     /* room so the hard shadows aren't clipped */
+    }
+    .itin-scroll::-webkit-scrollbar { height: 10px; }
+    .itin-scroll::-webkit-scrollbar-track { background: var(--sky-lt); border: 2px solid var(--ink); border-radius: 6px; }
+    .itin-scroll::-webkit-scrollbar-thumb { background: var(--ink); border-radius: 6px; }
+
+    /* Each day is a real <button> so it works with keyboard and screen readers */
+    .itin-stop {
+        all: unset;                    /* wipe default button look, then restyle */
+        box-sizing: border-box;
+        font-family: var(--font);
+        flex: 0 0 148px;
+        display: flex; flex-direction: column; align-items: center;
+        position: relative;
+        cursor: pointer;
+        padding: 12px 6px 12px;
+        background: var(--paper);      /* future days */
+        border: var(--bw) solid var(--ink);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        color: var(--ink);
+        transition: transform 0.08s, box-shadow 0.08s;
+    }
+    .itin-stop.s-past  { background: var(--sky-lt); }      /* days already sailed */
+    .itin-stop.s-today { background: var(--sun); box-shadow: 7px 7px 0 var(--ink); }
+    .itin-stop:hover   { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+    .itin-stop:active  { transform: translate(4px, 4px);   box-shadow: 0 0 0 var(--ink); }
+    /* Selected day gets a coral frame */
+    .itin-stop.is-selected { outline: 4px solid var(--coral); outline-offset: 3px; }
+
+    .itin-dot {
+        width: 40px; height: 40px; border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: 1.2rem;
+        background: var(--paper);
+        border: var(--bw) solid var(--ink);
+    }
+    .itin-day  { font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.6px; text-transform: uppercase; margin-top: 8px; }
+    .itin-date { font-size: 0.78rem; font-weight: 800; color: var(--ink-2); margin-top: 1px; text-align: center; }
+    .itin-port { font-size: 0.92rem; font-weight: 800; text-align: center; margin-top: 4px; padding: 0 4px; line-height: 1.25; }
+    .itin-time { font-size: 0.74rem; font-weight: 700; text-align: center; margin-top: 4px; line-height: 1.3; padding: 0 4px; }
+    .itin-time .syd { color: var(--ink-2); display: block; }
+    .today-tag {
+        font-family: var(--display); font-size: 0.75rem;
+        background: var(--coral);
+        border: 2px solid var(--ink);
+        border-radius: 6px;
+        padding: 0 8px; margin-top: 8px;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        transform: rotate(-3deg);
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────────────────────── */
+    footer {
+        background: var(--paper);
+        border: var(--bw) solid var(--ink);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        padding: 14px 16px;
+        margin-bottom: 32px;
+        text-align: center;
+        color: var(--ink);
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.6;
+    }
+    footer a { color: var(--ink); font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
+    footer a:hover { background: var(--sun); }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────────────── */
+    @media (max-width: 780px) {
+        .grid-2 { grid-template-columns: 1fr; }
+        .header-right { align-items: flex-start; }
+        .today-banner { align-items: flex-start; }
+        .header-left h1 { font-size: 1.3rem; }
+        .today-info h2 { font-size: 1.45rem; }
+        .card, .today-banner { box-shadow: 6px 6px 0 var(--ink); }   /* slightly smaller shadow on phones */
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .live-dot { animation: none; }
+        .tracker-link, .itin-stop { transition: none; }
+    }
+</style>
+
+<!-- ══ HEADER ═══════════════════════════════════════════════════════════ -->
+<header>
+    <div class="header-left">
+        <h1>🚢 <span class="ship-name">Celebrity Edge</span> — Family Cruise Tracker</h1>
+        <p class="subtitle">New Zealand voyage · Sydney → Milford Sound → Dunedin → Christchurch → Tauranga → Auckland → Bay of Islands → Sydney · 19 Nov – 1 Dec 2026</p>
+    </div>
+    <div class="header-right">
+        <div class="live-badge"><span class="live-dot"></span> FOLLOWING THE SHIP</div>
+        <div class="header-date" id="headerDate"></div>
+    </div>
+</header>
+
+<!-- ══ MAIN CONTENT ═════════════════════════════════════════════════════ -->
+<div class="container">
+
+    <!-- TODAY BANNER: filled in by renderBanner() -->
+    <section class="today-banner" aria-live="polite">
+        <div class="today-emoji" id="todayEmoji">🚢</div>
+        <div class="today-info">
+            <h2><span id="todayLead">Today:</span> <span class="loc" id="todayPort">Loading…</span></h2>
+            <p id="todayDesc">Finding where the ship is…</p>
+        </div>
+        <div class="badge badge-day">
+            <div class="b-label">Day</div>
+            <div class="b-value" id="todayDayNum">—</div>
+        </div>
+        <div class="badge badge-sleeps">
+            <div class="b-label" id="sleepsLabel">Sleeps</div>
+            <div class="b-value" id="sleepsNum">—</div>
+        </div>
+        <div class="badge badge-time">
+            <div class="b-label" id="timeLabel">Schedule</div>
+            <div class="b-value" id="todayTime">—</div>
+            <div class="b-sub" id="todayTimeSub"></div>
+        </div>
+    </section>
+
+    <!-- SHIP TRACKER: buttons that open live maps in a new tab.
+         (Websites can't be embedded inside a shared page, so we link out.) -->
+    <section class="card" style="margin-bottom:18px;">
+        <div class="card-title">📍 Where is the ship right now?</div>
+        <p class="tracker-intro">Tap a button to see the Celebrity Edge moving on a live map.</p>
+        <div class="tracker-links">
+            <a class="tracker-link" href="https://www.marinetraffic.com/en/ais/details/ships/shipid:5655169/mmsi:248325000/imo:9812705/vessel:CELEBRITY%20EDGE" target="_blank" rel="noopener">🗺️ MarineTraffic</a>
+            <a class="tracker-link" href="https://www.vesselfinder.com/?imo=9812705" target="_blank" rel="noopener">🔭 VesselFinder</a>
+            <a class="tracker-link" href="https://www.cruisemapper.com/?imo=9812705" target="_blank" rel="noopener">🧭 CruiseMapper</a>
+            <a class="tracker-link" href="https://www.cruisingearth.com/ship-tracker/celebrity-cruises/celebrity-edge/" target="_blank" rel="noopener">🌏 CruisingEarth</a>
+        </div>
+        <p class="tracker-note">Ship ID: IMO 9812705 · MMSI 248325000. If one map is slow, try another. Positions can be a few minutes behind.</p>
+    </section>
+
+    <!-- WEATHER + FUN FACTS -->
+    <div class="grid-2">
+        <section class="card">
+            <div class="card-title">🌤️ Weather at <span class="accent" id="weatherLocTitle">—</span></div>
+            <div id="weatherContent"><p class="w-loading">Checking the weather…</p></div>
+        </section>
+        <section class="card">
+            <div class="card-title">💡 Fun facts · <span class="accent" id="factsLocTitle">—</span></div>
+            <div id="factsContent"><p class="w-loading">Loading…</p></div>
+        </section>
+    </div>
+
+    <!-- TIMELINE: one button per day, built by renderItinerary() -->
+    <section class="card">
+        <div class="card-title">🗓️ The whole voyage</div>
+        <p class="itin-hint">Swipe along, and tap any day to read its fun facts. Port times are New Zealand time, with Sydney time underneath.</p>
+        <div class="itin-scroll" id="itinTrack"></div>
+    </section>
+
+</div>
+
+<footer>
+    Itinerary from the cruise booking · NZ port times are NZ local time (Sydney is 2 hours behind) ·
+    Weather from <a href="https://wttr.in" target="_blank" rel="noopener">wttr.in</a> · Made with ❤️ for the family
+</footer>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════
+
+// New Zealand is 2 hours AHEAD of Sydney on these dates (NZ summer time is
+// UTC+13, Sydney summer time is UTC+11). Port times from the cruise line are
+// NZ local time, so Sydney time = NZ time minus this many hours.
+const NZ_AHEAD_OF_SYDNEY_HOURS = 2;
+
+// First and last day of the voyage (Sydney dates). Used for the countdown.
+const VOYAGE_START = '2026-11-19';
+const VOYAGE_END   = '2026-12-01';
+
+/*
+ One entry per day.
+   kind     : 'depart' | 'sea' | 'fiord' | 'port' | 'home'  (drives wording)
+   nzOpen / nzClose : ship is docked, 24h NZ local time (ports only)
+   wq       : place name for the weather lookup (null = no weather, e.g. at sea)
+   wlabel   : short place name shown on the weather card
+   factsKey : which set of fun facts to show
+   look     : the "Look out for…" line for kids
+*/
+const ITINERARY = [
+    { day: 1,  date: '2026-11-19', kind: 'depart', place: 'Sydney',                  icon: '⚓',  wq: 'Sydney,Australia',          wlabel: 'Sydney',   factsKey: 'Sydney',    look: 'The Harbour Bridge and Opera House as the ship sails away' },
+    { day: 2,  date: '2026-11-20', kind: 'sea',    place: 'At Sea',                  icon: '🌊', wq: null,                         wlabel: 'at sea',   factsKey: 'Sea',       look: 'Dolphins swimming beside the ship' },
+    { day: 3,  date: '2026-11-21', kind: 'sea',    place: 'At Sea',                  icon: '🌊', wq: null,                         wlabel: 'at sea',   factsKey: 'Sea',       look: 'Dolphins swimming beside the ship' },
+    { day: 4,  date: '2026-11-22', kind: 'fiord',  place: 'Milford Sound',           icon: '🏔️', wq: 'Milford Sound,New Zealand',  wlabel: 'Milford Sound', factsKey: 'Fiordland', look: 'Waterfalls tumbling down the cliffs, and fur seals' },
+    { day: 5,  date: '2026-11-23', kind: 'port',   place: 'Dunedin',                 icon: '🐧', wq: 'Dunedin,New Zealand',        wlabel: 'Dunedin',  factsKey: 'Dunedin',   look: 'Penguins and sea lions' , nzOpen: '08:00', nzClose: '18:00' },
+    { day: 6,  date: '2026-11-24', kind: 'port',   place: 'Lyttelton (Christchurch)', icon: '🐬', wq: 'Lyttelton,New Zealand',     wlabel: 'Lyttelton', factsKey: 'Lyttelton', look: 'Green hills that make a giant bowl around the harbour', nzOpen: '08:00', nzClose: '18:00' },
+    { day: 7,  date: '2026-11-25', kind: 'sea',    place: 'At Sea',                  icon: '🌊', wq: null,                         wlabel: 'at sea',   factsKey: 'Sea',       look: 'Dolphins swimming beside the ship' },
+    { day: 8,  date: '2026-11-26', kind: 'port',   place: 'Tauranga (Rotorua)',      icon: '🌋', wq: 'Tauranga,New Zealand',       wlabel: 'Tauranga', factsKey: 'Tauranga',  look: 'Steam and bubbling mud near Rotorua', nzOpen: '05:30', nzClose: '16:45' },
+    { day: 9,  date: '2026-11-27', kind: 'port',   place: 'Auckland',                icon: '⛵', wq: 'Auckland,New Zealand',       wlabel: 'Auckland', factsKey: 'Auckland',  look: 'Lots and lots of sailboats', nzOpen: '06:00', nzClose: '19:00' },
+    { day: 10, date: '2026-11-28', kind: 'port',   place: 'Bay of Islands',          icon: '🏝️', wq: 'Paihia,New Zealand',         wlabel: 'Bay of Islands', factsKey: 'BayOfIslands', look: 'Little green islands and dolphins', nzOpen: '07:00', nzClose: '16:30' },
+    { day: 11, date: '2026-11-29', kind: 'sea',    place: 'At Sea',                  icon: '🌊', wq: null,                         wlabel: 'at sea',   factsKey: 'Sea',       look: 'Dolphins swimming beside the ship' },
+    { day: 12, date: '2026-11-30', kind: 'sea',    place: 'At Sea',                  icon: '🌊', wq: null,                         wlabel: 'at sea',   factsKey: 'Sea',       look: 'Dolphins swimming beside the ship' },
+    { day: 13, date: '2026-12-01', kind: 'home',   place: 'Sydney',                  icon: '🏠', wq: 'Sydney,Australia',           wlabel: 'Sydney',   factsKey: 'Sydney',    look: 'Home! The Harbour Bridge is the welcome sign' }
+];
+
+// Two short, simple facts per place (kept easy to read aloud for little ones).
+const FUN_FACTS = {
+    Sydney: [
+        '🌉 Big ships sail right underneath the Sydney Harbour Bridge. People call it "the Coathanger" because of its shape.',
+        '🎭 The Opera House roof looks like giant white sails. It is covered in over a million tiles!'
+    ],
+    Sea: [
+        '🐬 Dolphins sometimes race alongside big ships. Look over the rail at the front of the ship!',
+        '⭐ Far out at sea there are no city lights, so the night sky is full of stars.'
+    ],
+    Fiordland: [
+        '🏔️ Milford Sound is a deep valley that giant glaciers carved long, long ago. Then the sea filled it up.',
+        '💦 It rains a lot here, so waterfalls pop up all over the cliffs after a storm.'
+    ],
+    Dunedin: [
+        '🐧 Yellow-eyed penguins live near Dunedin. They are one of the rarest penguins in the world.',
+        '🦅 Royal albatrosses nest nearby. Their wings stretch about 3 metres wide!'
+    ],
+    Lyttelton: [
+        '🌋 Lyttelton harbour sits inside the crater of a volcano that stopped erupting millions of years ago.',
+        '🐬 Hector\'s dolphins live near Christchurch. They are some of the smallest dolphins and are only found in New Zealand.'
+    ],
+    Tauranga: [
+        '♨️ Rotorua has geysers that shoot hot water up into the sky, and mud pools that go "blub, blub".',
+        '🥚 The steam smells a bit like rotten eggs. That is the volcano gas!'
+    ],
+    Auckland: [
+        '🥝 People from New Zealand are nicknamed "Kiwis", after the kiwi bird. Kiwi birds cannot fly!',
+        '🌋 Auckland is built on lots of small volcanoes. They are all sleeping now.'
+    ],
+    BayOfIslands: [
+        '🏝️ The Bay of Islands has 144 islands. That is a lot to explore!',
+        '🐬 Dolphins often swim near the boats here.'
+    ]
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// PURE HELPERS (no page access, so they are easy to test)
+// ═══════════════════════════════════════════════════════════════════════
+
+// "HH:MM" (24h) -> minutes since midnight.
+function parseHM(s) {
+    const [h, m] = s.split(':').map(Number);
+    return h * 60 + m;
+}
+
+// Minutes since midnight -> "8:00 am" style text.
+function fmt12(totalMinutes) {
+    const h24 = Math.floor(totalMinutes / 60) % 24;
+    const m   = totalMinutes % 60;
+    const ap  = h24 >= 12 ? 'pm' : 'am';
+    const h12 = h24 % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
+// Build "8:00 am – 6:00 pm" from two "HH:MM" strings, optionally shifted
+// by some hours (negative = earlier). Used for NZ time and for Sydney time.
+function timeRange(open, close, shiftHours) {
+    const shift = (shiftHours || 0) * 60;
+    return `${fmt12(parseHM(open) + shift)} – ${fmt12(parseHM(close) + shift)}`;
+}
+
+// Today's date in Sydney as YYYY-MM-DD (the page always follows Sydney time,
+// because that is where the family at home is).
+function todayISO() {
+    // The "en-CA" locale formats dates as YYYY-MM-DD, which sorts as text.
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+}
+
+// Whole days from date a to date b (both YYYY-MM-DD). Works on UTC days, so
+// daylight saving changes can't make a day 23 or 25 hours long.
+function daysBetween(a, b) {
+    const [ay, am, ad] = a.split('-').map(Number);
+    const [by, bm, bd] = b.split('-').map(Number);
+    return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+}
+
+// "Fri 20 Nov" from "2026-11-20".
+function fmtDate(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// "1 sleep" / "12 sleeps".
+function sleepsText(n) {
+    return n === 1 ? '1 sleep' : `${n} sleeps`;
+}
+
+// Kid-friendly line for the temperature (feels-like, in °C).
+function kidWeatherLine(feelsC) {
+    const t = Number(feelsC);
+    if (t <= 8)  return 'Brrr! Coats on.';
+    if (t <= 14) return 'Chilly. Time for a jumper.';
+    if (t <= 21) return 'Nice and mild.';
+    return 'Warm. Hats and sunscreen!';
+}
+
+// wttr.in weather codes -> emoji.
+function weatherIcon(code) {
+    const c = parseInt(code, 10);
+    if (c === 113) return '☀️';
+    if (c === 116) return '⛅';
+    if (c === 119 || c === 122) return '☁️';
+    if ([143, 248, 260].includes(c)) return '🌫️';
+    if ([176, 263, 266, 293, 296, 299, 302, 305, 308, 353, 356, 359].includes(c)) return '🌧️';
+    if ([179, 182, 185, 281, 284, 311, 314, 317, 320, 323, 326, 329, 332, 335, 338, 350, 362, 365, 368, 371, 374, 377].includes(c)) return '🌨️';
+    if ([200, 386, 389, 392, 395].includes(c)) return '⛈️';
+    return '🌤️';
+}
+
+// Which stop is "today" (or null if today is outside the voyage).
+function findStop(dateStr) {
+    return ITINERARY.find(s => s.date === dateStr) || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDERING (touches the page)
+// ═══════════════════════════════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+
+// Set the text of the small helper lines under the banner badges.
+function setTime(label, value, sub) {
+    $('timeLabel').textContent   = label;
+    $('todayTime').textContent   = value;
+    $('todayTimeSub').textContent = sub || '';
+}
+
+// Top banner: where is the ship today, and how many sleeps until home?
+function renderBanner(today) {
+    const stop = findStop(today);
+
+    if (stop) {
+        $('todayEmoji').textContent  = stop.icon;
+        $('todayLead').textContent   = 'Today:';
+        $('todayPort').textContent   = stop.place;
+        $('todayDayNum').textContent = stop.day;
+
+        // Countdown to the morning they arrive back in Sydney.
+        const left = daysBetween(today, VOYAGE_END);
+        if (left === 0) {
+            $('sleepsLabel').textContent = 'Home';
+            $('sleepsNum').textContent   = 'Today!';
+        } else {
+            $('sleepsLabel').textContent = 'Until home';
+            $('sleepsNum').textContent   = sleepsText(left);
+        }
+
+        // Wording + time badge depend on the kind of day.
+        if (stop.kind === 'depart') {
+            $('todayDesc').textContent = '🎉 Bon voyage! The ship leaves Sydney today.';
+            setTime('Today', 'Departs', 'from Sydney');
+        } else if (stop.kind === 'home') {
+            $('todayDesc').textContent = '🏠 Welcome home! The ship is back in Sydney.';
+            setTime('Today', 'Arrives', 'in Sydney');
+        } else if (stop.kind === 'sea') {
+            $('todayDesc').textContent = '🌊 A whole day sailing. Dolphins sometimes swim beside ships!';
+            setTime('Today', 'At sea', 'all day');
+        } else if (stop.kind === 'fiord') {
+            $('todayDesc').textContent = '🏔️ The ship sails slowly past huge cliffs and waterfalls.';
+            setTime('Today', 'Cruising', 'the fiord');
+        } else {
+            $('todayDesc').textContent = `⚓ The ship is parked at ${stop.place} today. Time to explore!`;
+            setTime('Ship is in port (NZ time)',
+                    timeRange(stop.nzOpen, stop.nzClose, 0),
+                    `Sydney: ${timeRange(stop.nzOpen, stop.nzClose, -NZ_AHEAD_OF_SYDNEY_HOURS)}`);
+        }
+        return;
+    }
+
+    // Outside the voyage dates.
+    $('todayDayNum').textContent = '—';
+    if (today < VOYAGE_START) {
+        const n = daysBetween(today, VOYAGE_START);
+        $('todayEmoji').textContent  = '🧳';
+        $('todayLead').textContent   = '';
+        $('todayPort').textContent   = 'The ship has not left yet';
+        $('todayDesc').textContent   = `The Celebrity Edge leaves Sydney on Thursday 19 November. Check back then!`;
+        $('sleepsLabel').textContent = 'Until sailing';
+        $('sleepsNum').textContent   = sleepsText(n);
+        setTime('Sails', '19 Nov', 'from Sydney');
+    } else {
+        $('todayEmoji').textContent  = '🎉';
+        $('todayLead').textContent   = '';
+        $('todayPort').textContent   = 'The cruise is finished';
+        $('todayDesc').textContent   = 'The ship is back in Sydney. We hope it was amazing!';
+        $('sleepsLabel').textContent = 'Home';
+        $('sleepsNum').textContent   = '✔';
+        setTime('Arrived', '1 Dec', 'in Sydney');
+    }
+}
+
+// Which timeline day is selected (shows its fun facts). Starts on today.
+let selectedDate = null;
+
+// Timeline: one tappable card per day.
+function renderItinerary(today) {
+    const track = $('itinTrack');
+    track.innerHTML = '';
+
+    ITINERARY.forEach(stop => {
+        const isToday = stop.date === today;
+        const isPast  = stop.date < today;
+        const cls = isToday ? 's-today' : isPast ? 's-past' : 's-future';
+
+        // Time lines: NZ time on top, Sydney time underneath (ports only).
+        let timeHtml = '';
+        if (stop.kind === 'port') {
+            timeHtml = `${timeRange(stop.nzOpen, stop.nzClose, 0)}
+                        <span class="syd">Sydney ${timeRange(stop.nzOpen, stop.nzClose, -NZ_AHEAD_OF_SYDNEY_HOURS)}</span>`;
+        } else if (stop.kind === 'depart') timeHtml = 'Departs';
+        else if (stop.kind === 'home')     timeHtml = 'Arrives';
+        else if (stop.kind === 'fiord')    timeHtml = 'Scenic cruising';
+        else                               timeHtml = 'Day at sea';
+
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = `itin-stop ${cls}` + (stop.date === selectedDate ? ' is-selected' : '');
+        el.dataset.date = stop.date;
+        el.setAttribute('aria-label', `Day ${stop.day}, ${fmtDate(stop.date)}, ${stop.place}`);
+        el.innerHTML = `
+            <div class="itin-dot">${stop.icon}</div>
+            <div class="itin-day">Day ${stop.day}</div>
+            <div class="itin-date">${fmtDate(stop.date)}</div>
+            <div class="itin-port">${stop.place}</div>
+            <div class="itin-time">${timeHtml}</div>
+            ${isToday ? '<div class="today-tag">▶ Today</div>' : ''}
+        `;
+        el.addEventListener('click', () => {
+            selectedDate = stop.date;
+            renderItinerary(today);   // redraw so the highlight moves
+            renderFacts(stop);
+        });
+        track.appendChild(el);
+    });
+
+    // Scroll the timeline sideways so the selected day is centred.
+    // (Done by hand on the strip, so the whole page doesn't jump.)
+    const sel = track.querySelector('.is-selected');
+    if (sel) track.scrollLeft = sel.offsetLeft - (track.clientWidth - sel.offsetWidth) / 2;
+}
+
+// Fun facts card for the selected day.
+function renderFacts(stop) {
+    $('factsLocTitle').textContent = stop.kind === 'sea' ? 'At sea' : stop.place;
+    const facts = FUN_FACTS[stop.factsKey] || FUN_FACTS.Sea;
+    $('factsContent').innerHTML =
+        facts.map(f => `<div class="fact-item">${f}</div>`).join('') +
+        `<div class="lookout">👀 Look out for: ${stop.look}</div>`;
+}
+
+// Weather card. Tries a live lookup; if the page isn't allowed to fetch it
+// (shared pages often can't), shows a button to open the forecast instead.
+async function renderWeather(stop) {
+    const wc = $('weatherContent');
+    $('weatherLocTitle').textContent = stop.wlabel;
+
+    // Sea days have no town to look up.
+    if (!stop.wq) {
+        wc.innerHTML = `
+            <div class="weather-hero">
+                <div class="weather-icon-big">🌊</div>
+                <div>
+                    <div style="font-family:var(--display);font-size:1.3rem;">At sea today</div>
+                    <div class="weather-cond">The ship is sailing between places.</div>
+                </div>
+            </div>
+            <p class="w-note">See the sea forecast at <a class="w-link" href="https://www.metservice.com/marine" target="_blank" rel="noopener">MetService Marine</a>.</p>`;
+        return;
+    }
+
+    const forecastUrl = `https://wttr.in/${encodeURIComponent(stop.wq)}`;
+    // Fallback shown when live weather can't load.
+    const fallback = () => {
+        wc.innerHTML = `
+            <p class="w-loading">Live weather can't show on this page.</p>
+            <p class="w-note"><a class="w-link" href="${forecastUrl}" target="_blank" rel="noopener">Tap to see today's weather in ${stop.wlabel} →</a></p>`;
+    };
+
+    try {
+        // Give up after 8 seconds so the card never hangs on "checking".
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(`https://wttr.in/${encodeURIComponent(stop.wq)}?format=j1`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error('weather request failed');
+        const data = await res.json();
+        const cur  = data.current_condition[0];
+        const day  = data.weather[0];
+
+        wc.innerHTML = `
+            <div class="weather-hero">
+                <div class="weather-icon-big">${weatherIcon(cur.weatherCode)}</div>
+                <div>
+                    <div class="weather-temp-big">${cur.temp_C}<sup>°C</sup></div>
+                    <div class="weather-cond">${cur.weatherDesc[0].value}</div>
+                </div>
+            </div>
+            <p class="weather-kid">${kidWeatherLine(cur.FeelsLikeC)}</p>
+            <div class="weather-stats">
+                <div class="w-stat"><div class="wl">Feels like</div><div class="wv">${cur.FeelsLikeC}°C</div></div>
+                <div class="w-stat"><div class="wl">Wind</div><div class="wv">${cur.windspeedKmph} km/h</div></div>
+                <div class="w-stat"><div class="wl">High</div><div class="wv">${day.maxtempC}°C</div></div>
+                <div class="w-stat"><div class="wl">Low</div><div class="wv">${day.mintempC}°C</div></div>
+            </div>`;
+    } catch (e) {
+        fallback();
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// START-UP
+// ═══════════════════════════════════════════════════════════════════════
+
+// Which stop the weather card follows: today's stop if the ship is sailing,
+// otherwise Sydney (before the trip starts, and after it ends).
+function weatherStopFor(today) {
+    return findStop(today) || ITINERARY[0];
+}
+
+function init() {
+    const today = todayISO();
+
+    // Header date (in Sydney time, to match the countdown).
+    $('headerDate').textContent = new Date().toLocaleDateString('en-AU', {
+        timeZone: 'Australia/Sydney', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    // Start on today's stop; before the trip show Day 1, after it show the last day.
+    const stopToday = findStop(today);
+    selectedDate = stopToday ? stopToday.date
+                 : today < VOYAGE_START ? ITINERARY[0].date
+                 : ITINERARY[ITINERARY.length - 1].date;
+
+    renderBanner(today);
+    renderItinerary(today);
+    renderFacts(ITINERARY.find(s => s.date === selectedDate));
+    renderWeather(weatherStopFor(today));
+
+    // Refresh the weather every 15 minutes while the page stays open.
+    setInterval(() => renderWeather(weatherStopFor(todayISO())), 15 * 60 * 1000);
+}
+
+// Only start up in a real page (this lets the helpers be tested without one).
+if (typeof document !== 'undefined') init();
+</script>
